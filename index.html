@@ -1,0 +1,52 @@
+<html>
+<head>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        div {
+            width: 128px;
+            height: 128px;
+            display: inline-block;
+            margin-right: 16px;
+            font-family: Calibri;
+        }
+    </style>
+</head>
+<body>
+    <div></div>
+    <div></div>
+
+    <div></div>
+    <div></div>
+    <div></div>
+    <br>
+
+    <div></div>
+    <div></div>
+
+    <div></div>
+    <div></div>
+    <div></div>
+</body>
+<script src="lumen.js"></script>
+<script>
+var divs = document.querySelectorAll("div");
+var colors = lumen.predefined;
+for (var i = 0; i < divs.length; i += 5) {
+    var colorName = colors[~~(Math.random() * (colors.length - 1))];
+    
+    divs[i].style.backgroundColor = lumen.color(colorName).hex();
+    divs[i + 1].style.backgroundColor = lumen.color(colorName).complementary().hex();
+    
+    
+    divs[i + 2].style.backgroundColor = lumen.color(colorName).rgba();
+    divs[i + 3].style.backgroundColor = lumen.color(colorName).dim(2).rgba();
+    var result = lumen.color("green").result;
+    divs[i + 4].style.backgroundColor = lumen.color("black").subtract(result).rgba();
+    
+}
+</script>
+</html>
