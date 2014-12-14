@@ -1,4 +1,5 @@
 (function (window) {
+    "use strict";
     var utils = {
         clamp: function (x, min, max) {
             if (x < min)
@@ -6,11 +7,134 @@
             if (x > max)
                 return max;
             return x;
-        }
+        },
+
+        toHSLA: function (color) {
+            var red = ((color & masks.r) >>> offsets.r) / INT8_MAX,
+                green = ((color & masks.g) >>> offsets.g) / INT8_MAX,
+                blue = ((color & masks.b) >>> offsets.b) / INT8_MAX,
+                alpha = ((color & masks.a) >>> offsets.a) / INT8_MAX;
+
+            var max = Math.max(red, green, blue),
+                min = Math.min(red, green, blue);
+
+            var chroma = max - min;
+            var hue = 0;
+            if (chroma !== 0) {
+                switch (max) {
+                    case red: hue = ((green - blue) / chroma) % 6; break;
+                    case green: hue = (blue - red) / chroma + 2; break;
+                    case blue: hue = (red - green) / chroma + 4; break;
+                };
+                hue *= 60;
+            }
+            var lightness = (max + min) / 2;
+            var saturation = 0;
+            if (lightness !== 0 && lightness !== 1)
+                saturation = chroma / (1 - Math.abs(2 * lightness - 1));
+
+            return {
+                h: hue,
+                s: saturation,
+                l: lightness,
+                a: alpha
+            };
+        },
+        fromHSLA: function (hue, saturation, lightness, alpha) {
+            var red = 0,
+                green = 0,
+                blue = 0,
+                chroma = 0;
+            if (saturation == 0) {
+                red = green = blue = lightness;
+            }
+            else {
+                var chroma = saturation * (1 - Math.abs(2 * lightness - 1)),
+                    huePrime = hue / 60,
+                    x = chroma * (1 - Math.abs(huePrime % 2 - 1));
+                
+                if (huePrime >= 0 && huePrime < 1) {
+                    red = chroma; green = x;
+                }
+                else if (huePrime >= 1 && huePrime < 2) {
+                    red = x; green = chroma;
+                }
+                else if (huePrime >= 2 && huePrime < 3) {
+                    green = chroma; blue = x;
+                }
+                else if (huePrime >= 3 && huePrime < 4) {
+                    green = x; blue = chroma;
+                }
+                else if (huePrime >= 4 && huePrime < 5) {
+                    red = x; blue = chroma;
+                }
+                else if (huePrime >= 5 && huePrime < 6) {
+                    red = chroma; blue = x;
+                }
+            }
+            var min = lightness - chroma / 2;
+            red += min;
+            green += min;
+            blue += min;
+            return (red * 255) << offsets.r |
+                   (green * 255) << offsets.g |
+                   (blue * 255) << offsets.b |
+                   (alpha * 255) << offsets.a;
+        },
+        toRGBA: function (color) {
+            return {
+                r: (color & masks.r) >>> offsets.r,
+                g: (color & masks.g) >>> offsets.g,
+                b: (color & masks.b) >>> offsets.b,
+                a: ((color & masks.a) >>> offsets.a) / INT8_MAX
+            };
+        },
+
+        rgbaRegex: new RegExp("rgba\\((\\d{1,3}),\\s*(\\d{1,3}),\\s*(\\d{1,3}),\\s*(\\d(?:\\.\\d+)?)\\)"),
+        hslaRegex: new RegExp("hsla\\((\\d+(?:\\.\\d+)?),\\s*(\\d+(?:\\.\\d+)?)%,\\s*(\\d+(?:\\.\\d+)?)%,\\s*(\\d+(?:\\.\\d+)?)\\)"),
+        hexRegex: new RegExp("#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})"),
+        parseColor: function (colorAsString) {
+            var match;
+            if ((match = utils.rgbaRegex.exec(colorAsString)) !== null) {
+                return ~~match[1] << offsets.r |
+                       ~~match[2] << offsets.g |
+                       ~~match[3] << offsets.b |
+                       (parseFloat(match[4]) * 255) << offsets.a;
+            }
+            if ((match = utils.hslaRegex.exec(colorAsString)) !== null) {
+                var hue = parseFloat(match[1]),
+                    saturation = parseFloat(match[2]) / 100,
+                    lightness = parseFloat(match[3]) / 100,
+                    alpha = parseFloat(match[4]);
+
+                return utils.fromHSLA(hue, saturation, lightness, alpha);
+            }
+            if ((match = utils.hexRegex.exec(colorAsString)) !== null) {
+                return parseInt(match[1], 16) << offsets.r |
+                       parseInt(match[2], 16) << offsets.g |
+                       parseInt(match[3], 16) << offsets.b |
+                       INT8_MAX << offsets.a;
+            }
+        },
     };
 
-    var lumen = {};
-    Object.defineProperty(lumen, "result", {
+    var luma = function (value) {
+        if (typeof value === "object") {
+            lastResult = value.r << offsets.r |
+                         value.g << offsets.g |
+                         value.b << offsets.b |
+                         value.a << offsets.a;
+        }
+        else if (PREDEFINED[value] !== undefined) {
+            lastResult = PREDEFINED[value];
+        }
+        else if (typeof value == "string") {
+            lastResult = utils.parseColor(value);
+        }
+        return luma;
+    };
+
+    Object.defineProperty(luma, "result", {
         get: function () {
             return lastResult;
         }
@@ -34,13 +158,13 @@
     var INT8_MAX = 0xFF;
     var INT32_MAX = 0xFFFFFFFF;
 
-    lumen.hex = function (color) {
+    luma.hex = function (color) {
         color = color !== undefined ? color : lastResult;
         var asHex = (color >>> 8).toString(16);
         return "#000000".substr(0, 7 - asHex.length) + asHex;
     };
 
-    lumen.rgba = function (color) {
+    luma.rgba = function (color) {
         color = color !== undefined ? color : lastResult;
         return "rgba(" + 
                      ((color & masks.r) >>> offsets.r) + ", " + 
@@ -49,26 +173,25 @@
                      ((color & masks.a) >>> offsets.a) / INT8_MAX + ")";
     };
 
-    lumen.color = function (value) {
-        if (typeof value === "object") {
-            lastResult = value.r << offsets.r |
-                         value.g << offsets.g |
-                         value.b << offsets.b |
-                         value.a << offsets.a;
-        }
-        else if (PREDEFINED[value] !== undefined) {
-            lastResult = PREDEFINED[value];
-        }
-        return this;
+    luma.hsla = function (color) {
+        color = color !== undefined ? color : lastResult;
+        var hsla = utils.toHSLA(color);
+
+        return "hsla(" + 
+                     hsla.h + ", " + 
+                     hsla.s * 100 + "%, " + 
+                     hsla.l * 100 + "%, " + 
+                     hsla.a + ")";
     };
 
-    lumen.complementary = function (color) {
+
+    luma.complementary = function (color) {
         color = color || lastResult;
         lastResult = ~color | (color & masks.a) << offsets.a;
         return this;
     };
 
-    lumen.brighten = function (factor) {
+    luma.brighten = function (factor) {
         var color = lastResult;
         lastResult = utils.clamp(factor * ((color & masks.r) >>> offsets.r), 0, INT8_MAX) << offsets.r |
                      utils.clamp(factor * ((color & masks.g) >>> offsets.g), 0, INT8_MAX) << offsets.g |
@@ -77,12 +200,12 @@
         return this;
     };
 
-    lumen.dim = function (factor) {
+    luma.dim = function (factor) {
         this.brighten(1 / factor);
         return this;
     };
 
-    lumen.add = function (color) {
+    luma.add = function (color) {
         var c1 = lastResult,
             c2 = color;
         lastResult = utils.clamp(((c1 & masks.r) >>> offsets.r) + ((c2 & masks.r) >>> offsets.r), 0, INT8_MAX) << offsets.r |
@@ -92,9 +215,40 @@
         return this;
     };
 
-    lumen.subtract = function (color) {
+    luma.subtract = function (color) {
         var result = lastResult;
         this.complementary(color).add(result);
+        return this;
+    };
+
+    luma.shiftHue = function (angle) {
+        var hlsa = utils.toHSLA(lastResult);
+        hlsa.h += angle;
+        lastResult = utils.fromHSLA(hlsa.h, hlsa.s, hlsa.l, hlsa.a);
+        return this;
+    };
+    
+    luma.saturate = function (amount) {
+        var hlsa = utils.toHSLA(lastResult);
+        hlsa.s += amount;
+        lastResult = utils.fromHSLA(hlsa.h, hlsa.s, hlsa.l, hlsa.a);
+        return this;
+    };
+    
+    luma.desaturate = function (amount) {
+        this.saturate(-amount);
+        return this;
+    };
+
+    luma.grayscale = function () {
+        var lightness = ((lastResult & masks.r) >>> offsets.r) +
+                        ((lastResult & masks.g) >>> offsets.g) +
+                        ((lastResult & masks.b) >>> offsets.b);
+        lightness /= 3;
+        lastResult = lightness << offsets.r |
+                     lightness << offsets.g |
+                     lightness << offsets.b |
+                     (lastResult & masks.a);
         return this;
     };
 
@@ -247,6 +401,7 @@
         rebeccapurple:          0x663399FF
     };
 
-    lumen.predefined = Object.keys(PREDEFINED);
-    window.lumen = lumen;
+    luma.predefined = Object.keys(PREDEFINED);
+    luma.utils = utils;
+    window.luma = luma;
 })(window || {});

@@ -18,6 +18,7 @@
 <body>
     <div></div>
     <div></div>
+    <div></div>
 
     <div></div>
     <div></div>
@@ -26,27 +27,26 @@
 
     <div></div>
     <div></div>
+    <div></div>
 
     <div></div>
     <div></div>
     <div></div>
 </body>
-<script src="lumen.js"></script>
+<script src="luma.js"></script>
 <script>
 var divs = document.querySelectorAll("div");
-var colors = lumen.predefined;
-for (var i = 0; i < divs.length; i += 5) {
+var colors = luma.predefined;
+for (var i = 0; i < divs.length; i += 6) {
     var colorName = colors[~~(Math.random() * (colors.length - 1))];
-    
-    divs[i].style.backgroundColor = lumen.color(colorName).hex();
-    divs[i + 1].style.backgroundColor = lumen.color(colorName).complementary().hex();
-    
-    
-    divs[i + 2].style.backgroundColor = lumen.color(colorName).rgba();
-    divs[i + 3].style.backgroundColor = lumen.color(colorName).dim(2).rgba();
-    var result = lumen.color("green").result;
-    divs[i + 4].style.backgroundColor = lumen.color("black").subtract(result).rgba();
-    
+
+    divs[i].style.backgroundColor = luma(colorName).hex();
+    divs[i + 1].style.backgroundColor = luma(colorName).grayscale().rgba();
+    divs[i + 2].style.backgroundColor = luma(colorName).shiftHue(90).rgba();
+    divs[i + 3].style.backgroundColor = luma(colorName).saturate(0.3).rgba();
+    divs[i + 4].style.backgroundColor = luma(colorName).desaturate(0.3).rgba();
+    //divs[i + 5].style.backgroundColor = luma(luma("rgba(57, 172, 153, 1)").hsla()).rgba();
+
 }
 </script>
 </html>
