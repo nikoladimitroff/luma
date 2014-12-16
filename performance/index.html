@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+
+    <script src="chroma.min.js"/></script>
+    <script src="three.min.js"/></script>
+    <script src="../luma.js"/></script>
+    
+    <script>
+        document.write("<pre>");
+        document.writeln("Tests starting...");
+
+        var ITERATIONS = 10e5;
+        
+        var Profiler = function () {
+            
+        };
+        Profiler.prototype.start = function (test) {
+            this.timestamp = Date.now();
+            this.test = test;
+        };
+        Profiler.prototype.stop = function () {
+            this.elapsed = Date.now() - this.timestamp;
+            this.timestamp = null;
+        };
+        Profiler.prototype.report = function () {
+            document.writeln("TIME SPENT IN " + this.test + ": " + this.elapsed);
+        }
+        
+        var profiler = new Profiler();
+        
+        profiler.start("LUMA" );
+        var color = luma("#0F107E");
+        for (var i = 0; i < ITERATIONS; i++) {
+            color.saturate(0.2).dim(0.3).desaturate(0.1).brighten(0.4).rgba();
+        }
+        profiler.stop();
+        profiler.report();
+        
+        
+        
+        profiler.start("CHROMA" );
+        var color = chroma("#0F107E");
+        for (var i = 0; i < ITERATIONS; i++) {
+            color.saturate(0.2).darker(0.3).desaturate(0.1).brighter(0.4).css();
+        }
+        profiler.stop();
+        profiler.report();
+        
+        
+        profiler.start("COLORS" );
+        var color = luma("#0F107E");
+        for (var i = 0; i < ITERATIONS; i++) {
+            color.saturate(0.2).dim(0.3).desaturate(0.1).brighten(0.4).rgba();
+        }
+        profiler.stop();
+        profiler.report();
+        
+        document.write("</pre>");
+    </script>
+</body>
+</html>

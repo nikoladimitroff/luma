@@ -41,10 +41,12 @@ for (var i = 0; i < divs.length; i += 6) {
     var colorName = colors[~~(Math.random() * (colors.length - 1))];
 
     divs[i].style.backgroundColor = luma(colorName).hex();
-    divs[i + 1].style.backgroundColor = luma(colorName).grayscale().rgba();
-    divs[i + 2].style.backgroundColor = luma(colorName).shiftHue(90).rgba();
-    divs[i + 3].style.backgroundColor = luma(colorName).saturate(0.3).rgba();
-    divs[i + 4].style.backgroundColor = luma(colorName).desaturate(0.3).rgba();
+    divs[i + 1].style.backgroundColor = luma(colorName).shiftHue(90).rgba();
+    divs[i + 2].style.backgroundColor = luma(colorName).shiftHue(180).rgba();
+    divs[i + 3].style.backgroundColor = luma(colorName).shiftHue(270).rgba();
+    divs[i + 4].style.backgroundColor = luma(colorName).shiftHue(360).rgba();
+    //divs[i + 3].style.backgroundColor = luma(colorName).saturate(0.3).rgba();
+    //divs[i + 4].style.backgroundColor = luma(colorName).desaturate(0.3).rgba();
     //divs[i + 5].style.backgroundColor = luma(luma("rgba(57, 172, 153, 1)").hsla()).rgba();
 
 }

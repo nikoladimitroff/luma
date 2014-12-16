@@ -51,3 +51,29 @@ describe("Color conversions", function () {
         expect(color.a).to.be.closeTo(1, FLOATING_ERROR);
     });
 });
+
+describe("color operations", function () {
+    it("hue shift", function () {
+        var red = luma.predefined.red.result;
+        expect(luma(red).shiftHue(0).result).to.equal(red);
+        expect(luma(red).shiftHue(360).result).to.equal(red);
+        expect(luma(red).shiftHue(-360).result).to.equal(red);
+    });
+
+    it("saturate", function () {
+        var red = luma.predefined.red.result;
+        expect(luma(red).saturate(0).result).to.equal(red);
+        expect(luma(red).saturate(1).result).to.equal(red);
+        var desaturated = luma(red).saturate(-1).utils.toRGBA();
+
+        console.log(luma(desaturated).saturate(1).rgba());
+        expect(desaturated.r).to.be.closeTo(128, INTEGER_ERROR);
+        expect(desaturated.g).to.be.closeTo(128, INTEGER_ERROR);
+        expect(desaturated.b).to.be.closeTo(128, INTEGER_ERROR);
+        expect(desaturated.a).to.be.closeTo(1, FLOATING_ERROR);
+    });
+    
+    it("desaturate", function () {
+        
+    });
+});
