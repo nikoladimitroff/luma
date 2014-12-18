@@ -7,15 +7,23 @@
     <script src="chroma.min.js"/></script>
     <script src="three.min.js"/></script>
     <script src="../luma.js"/></script>
-    
+    <script src="../simd.polyfill-61335b2.js"></script>
+    <script src="../luma.simd.js"/></script>
+
     <script>
         document.write("<pre>");
         document.writeln("Tests starting...");
 
-        var ITERATIONS = 10e5;
-        
+        var ITERATIONS = 10e4;
+
+        var padLeft = function (str, width, symbol) {
+            symbol = symbol || " ";
+            var pad = Array(width + 1).join(symbol);
+            str = str.toString();
+            return pad.substring(0, pad.length - str.length) + str;
+        }
         var Profiler = function () {
-            
+
         };
         Profiler.prototype.start = function (test) {
             this.timestamp = Date.now();
@@ -26,21 +34,12 @@
             this.timestamp = null;
         };
         Profiler.prototype.report = function () {
-            document.writeln("TIME SPENT IN " + this.test + ": " + this.elapsed);
+            var message = "Time spent in " + this.test + ": " + this.elapsed;
+            document.writeln(message);
         }
-        
+
         var profiler = new Profiler();
-        
-        profiler.start("LUMA" );
-        var color = luma("#0F107E");
-        for (var i = 0; i < ITERATIONS; i++) {
-            color.saturate(0.2).dim(0.3).desaturate(0.1).brighten(0.4).rgba();
-        }
-        profiler.stop();
-        profiler.report();
-        
-        
-        
+
         profiler.start("CHROMA" );
         var color = chroma("#0F107E");
         for (var i = 0; i < ITERATIONS; i++) {
@@ -48,7 +47,23 @@
         }
         profiler.stop();
         profiler.report();
-        
+
+        profiler.start("LUMA" );
+        var color = luma("#0F107E");
+        for (var i = 0; i < ITERATIONS; i++) {
+            color.saturate(0.2).dim(0.3).desaturate(0.1).brighten(0.4).rgba();
+        }
+        profiler.stop();
+        profiler.report();
+
+        profiler.start("LUMA SIMD" );
+        var color = lumasimd("#0F107E");
+        for (var i = 0; i < ITERATIONS; i++) {
+            color.saturate(0.2).dim(0.3).desaturate(0.1).brighten(0.4).rgba();
+        }
+        profiler.stop();
+        profiler.report();
+
         document.write("</pre>");
     </script>
 </body>
