@@ -24,7 +24,11 @@
             var hue = 0;
             if (chroma !== 0) {
                 switch (max) {
-                    case red: hue = ((green - blue) / chroma) % 6; break;
+                    case red:
+                        hue = ((green - blue) / chroma) % 6;
+                        if (green < blue)
+                            hue += 6;
+                        break;
                     case green: hue = (blue - red) / chroma + 2; break;
                     case blue: hue = (red - green) / chroma + 4; break;
                 };
@@ -117,6 +121,43 @@
                        INT8_MAX << offsets.a;
             }
         },
+        drawHslCircle: function (context, color, center, radius, steps, radiusSteps) {
+            color = luma(color).result;
+            var DEGREES_IN_CIRCUMFERENCE = 360;
+            var degreesPerStep = DEGREES_IN_CIRCUMFERENCE / steps;
+            var distancePerRadiusStep = radius / radiusSteps;
+
+            for (var i = 0; i < steps; i++) {
+                for (var j = 0; j < radiusSteps; j++) {
+                    context.strokeStyle = luma(color)
+                                        .shiftHue(i * degreesPerStep)
+                                        .desaturate(1 - j / radiusSteps)
+                                        .rgba();
+
+                    var angle = Math.PI * (i * degreesPerStep) / 180;
+                    var nextAngle = Math.PI * ((i + 1) * degreesPerStep) / 180;
+                    var distance = j * distancePerRadiusStep,
+                        nextDistance = (j + 1) * distancePerRadiusStep;
+                    var c1 = new Vector2(center.x + distance * Math.cos(angle),
+                                         center.y + distance * Math.sin(angle));
+                    var c2 = new Vector2(center.x + distance * Math.cos(nextAngle),
+                                         center.y + distance * Math.sin(nextAngle));
+
+                    var v = new Vector2(center.x + nextDistance * Math.cos(angle),
+                                        center.y + nextDistance * Math.sin(angle));
+                    var u = new Vector2(center.x + nextDistance * Math.cos(nextAngle),
+                                        center.y + nextDistance * Math.sin(nextAngle));
+
+                    context.beginPath();
+                    context.moveTo(c1.x, c1.y);
+                    context.lineTo(v.x, v.y);
+                    context.lineTo(u.x, u.y);
+                    context.lineTo(c2.x, c2.y);
+                    context.closePath();
+                    context.stroke();
+                }
+            }
+        }
     };
 
     var luma = function (value) {
@@ -124,7 +165,7 @@
             lastResult = value.r << offsets.r |
                          value.g << offsets.g |
                          value.b << offsets.b |
-                         value.a << offsets.a;
+                         (value.a * INT8_MAX) << offsets.a;
         }
         else if (PREDEFINED[value] !== undefined) {
             lastResult = PREDEFINED[value];
@@ -188,6 +229,11 @@
                      hsla.a + ")";
     };
 
+    luma.random = function () {
+        lastResult = ~~(Math.random() * INT32_MAX);
+        return this;
+    }
+
 
     luma.complementary = function (color) {
         color = color || lastResult;
@@ -245,10 +291,9 @@
     };
 
     luma.grayscale = function () {
-        var lightness = ((lastResult & masks.r) >>> offsets.r) +
-                        ((lastResult & masks.g) >>> offsets.g) +
-                        ((lastResult & masks.b) >>> offsets.b);
-        lightness /= 3;
+        var lightness = 0.21 * ((lastResult & masks.r) >>> offsets.r) +
+                        0.72 * ((lastResult & masks.g) >>> offsets.g) +
+                        0.07 * ((lastResult & masks.b) >>> offsets.b);
         lastResult = lightness << offsets.r |
                      lightness << offsets.g |
                      lightness << offsets.b |

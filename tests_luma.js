@@ -2,6 +2,7 @@ var expect = chai.expect;
 
 var INTEGER_ERROR = 1;
 var FLOATING_ERROR = 1e-2;
+var SUB_TEST_ITERATIONS = 5;
 
 var runTests = function (tests) {
     for (var testCase in tests) {
@@ -13,7 +14,7 @@ var runTests = function (tests) {
     }
 };
 
-describe("Color conversions", function () {
+describe("Colour conversions", function () {
     var tests = {
         "rgba2hsla": function (luma) {
             // rgba(57, 172, 153, 1) == hsla(170, 50%, 45%, 1)
@@ -65,10 +66,14 @@ describe("Color conversions", function () {
     runTests(tests);
 });
 
-describe("color operations", function () {
+describe("Unary Colour operations", function () {
     var tests = {
         "hue shift": function (luma) {
             var red = luma.predefined.red.result;
+            console.log(luma(red).shiftHue(0).result);
+            console.log(luma(red).shiftHue(360).result);
+            console.log(luma(red).shiftHue(-360).result);
+            
             expect(luma(red).shiftHue(0).result).to.deep.equal(red);
             expect(luma(red).shiftHue(360).result).to.deep.equal(red);
             expect(luma(red).shiftHue(-360).result).to.deep.equal(red);
@@ -84,8 +89,28 @@ describe("color operations", function () {
             expect(desaturated.b).to.be.closeTo(128, INTEGER_ERROR);
             expect(desaturated.a).to.be.closeTo(1, FLOATING_ERROR);
         },
-        "desaturate": function (luma) {
-        }
+        "complementary": function (luma) {
+            for (var i = 0; i < SUB_TEST_ITERATIONS; i++) {
+                var random = luma.random().utils.toRGBA();
+                var reset = luma(random).complementary().complementary().utils.toRGBA();
+                
+                expect(reset.r).to.be.closeTo(reset.r, INTEGER_ERROR);
+                expect(reset.g).to.be.closeTo(reset.g, INTEGER_ERROR);
+                expect(reset.b).to.be.closeTo(reset.b, INTEGER_ERROR);
+                expect(reset.a).to.be.closeTo(reset.a, FLOATING_ERROR);
+                
+            }
+        },
+        "grayscale": function (luma) {
+            for (var i = 0; i < SUB_TEST_ITERATIONS; i++) {
+                var random = luma.random().utils.toRGBA();
+                var grayscale = luma(random).grayscale().utils.toRGBA();
+                expect(grayscale.r).to.equal(grayscale.g).and.to.equal(grayscale.b);
+                expect(random.a).to.equal(grayscale.a);
+                
+            }
+        },
+        
     }
     runTests(tests);
 });

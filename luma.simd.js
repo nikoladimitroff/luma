@@ -24,7 +24,11 @@
             var hue = 0;
             if (chroma !== 0) {
                 switch (max) {
-                    case red: hue = ((green - blue) / chroma) % 6; break;
+                    case red:
+                        hue = ((green - blue) / chroma) % 6;
+                        if (green < blue)
+                            hue += 6;
+                        break;
                     case green: hue = (blue - red) / chroma + 2; break;
                     case blue: hue = (red - green) / chroma + 4; break;
                 };
@@ -114,10 +118,50 @@
                                       1);
             }
         },
+        drawHslCircle: function (context, color, center, radius, steps, radiusSteps) {
+            color = luma(color).result;
+            var DEGREES_IN_CIRCUMFERENCE = 360;
+            var degreesPerStep = DEGREES_IN_CIRCUMFERENCE / steps;
+            var distancePerRadiusStep = radius / radiusSteps;
+
+            for (var i = 0; i < steps; i++) {
+                for (var j = 0; j < radiusSteps; j++) {
+                    context.strokeStyle = luma(color)
+                                          .shiftHue(i * degreesPerStep)
+                                          .desaturate(1 - j / radiusSteps)
+                                          .rgba();
+
+                    var angle = Math.PI * (i * degreesPerStep) / 180;
+                    var nextAngle = Math.PI * ((i + 1) * degreesPerStep) / 180;
+                    var distance = j * distancePerRadiusStep,
+                        nextDistance = (j + 1) * distancePerRadiusStep;
+                    var c1 = new Vector2(center.x + distance * Math.cos(angle),
+                                         center.y + distance * Math.sin(angle));
+                    var c2 = new Vector2(center.x + distance * Math.cos(nextAngle),
+                                         center.y + distance * Math.sin(nextAngle));
+
+                    var v = new Vector2(center.x + nextDistance * Math.cos(angle),
+                                        center.y + nextDistance * Math.sin(angle));
+                    var u = new Vector2(center.x + nextDistance * Math.cos(nextAngle),
+                                        center.y + nextDistance * Math.sin(nextAngle));
+
+                    context.beginPath();
+                    context.moveTo(c1.x, c1.y);
+                    context.lineTo(v.x, v.y);
+                    context.lineTo(u.x, u.y);
+                    context.lineTo(c2.x, c2.y);
+                    context.closePath();
+                    context.stroke();
+                }
+            }
+        }
     };
 
     var luma = function (value) {
-        if (typeof value === "object" &&
+        if (typeof value === "object" && value.constructor === SIMD.float32x4) {
+            lastResult = value;
+        }
+        else if (typeof value === "object" &&
             value.r !== undefined &&
             value.g !== undefined &&
             value.b !== undefined &&
@@ -135,10 +179,10 @@
             lastResult = utils.parseColor(value);
         }
         else if (typeof value == "number") {
-            lastResult = SIMD.float32x4(((value & masks.r) >> offsets.r) / INT8_MAX,
-                                        ((value & masks.g) >> offsets.g) / INT8_MAX,
-                                        ((value & masks.b) >> offsets.b) / INT8_MAX,
-                                        ((value & masks.a) >> offsets.a) / INT8_MAX);
+            lastResult = SIMD.float32x4(((value & masks.r) >>> offsets.r) / INT8_MAX,
+                                        ((value & masks.g) >>> offsets.g) / INT8_MAX,
+                                        ((value & masks.b) >>> offsets.b) / INT8_MAX,
+                                        ((value & masks.a) >>> offsets.a) / INT8_MAX);
             ;
         }
         return luma;
@@ -179,10 +223,10 @@
     luma.rgba = function (color) {
         color = color !== undefined ? color : lastResult;
         return "rgba(" + 
-                     ~~(color.r * 255) + ", " + 
-                     ~~(color.g * 255) + ", " + 
-                     ~~(color.b * 255) + ", " + 
-                     color.a + ")";
+                     ~~(color.x * 255) + ", " + 
+                     ~~(color.y * 255) + ", " + 
+                     ~~(color.z * 255) + ", " + 
+                     color.w + ")";
     };
 
     luma.hsla = function (color) {
@@ -196,20 +240,28 @@
                      hsla.a + ")";
     };
 
+    luma.random = function () {
+        lastResult = SIMD.float32x4(Math.random(),
+                                    Math.random(),
+                                    Math.random(),
+                                    Math.random());
+        return this;
+    }
 
-    var WHITE = SIMD.float32x4(1, 1, 1, 1);
-    var BLACK = SIMD.float32x4(0, 0, 0, 0);
+    var MAX = SIMD.float32x4(1, 1, 1, 1);
+    var MIN = SIMD.float32x4(0, 0, 0, 1);
+
     luma.complementary = function (color) {
         color = color || lastResult;
-        lastResult = SIMD.float32x4.sub(WHITE, color);
-        lastResult = lastResult.withW(1);
+        lastResult = SIMD.float32x4.sub(MAX, color);
+        lastResult = SIMD.float32x4.withW(lastResult, 1);
         return this;
     };
 
     
     luma.brighten = function (factor) {
         var color = lastResult;
-        lastResult = SIMD.float32x4.clamp(color, BLACK, WHITE);
+        lastResult = SIMD.float32x4.clamp(color, MIN, MAX);
         return this;
     };
 
@@ -221,14 +273,14 @@
     luma.add = function (color) {
         var c1 = lastResult,
             c2 = color;
-        lastResult = SIMD.float32x4.clamp(SIMD.float32x4.add(c1, c2), BLACK, WHITE);
+        lastResult = SIMD.float32x4.clamp(SIMD.float32x4.add(c1, c2), MIN, MAX);
         return this;
     };
 
     luma.subtract = function (color) {
         var c1 = lastResult,
             c2 = color;
-        lastResult = SIMD.float32x4.clamp(SIMD.float32x4.sub(c1, c2), BLACK, WHITE);
+        lastResult = SIMD.float32x4.clamp(SIMD.float32x4.sub(c1, c2), MIN, MAX);
         return this;
     };
 
@@ -252,10 +304,9 @@
     };
 
     luma.grayscale = function () {
-        var lightness = lastResult.x +
-                        lastResult.y +
-                        lastResult.z;
-        lightness /= 3;
+        var lightness = 0.21 * lastResult.x +
+                        0.72 * lastResult.y +
+                        0.07 * lastResult.z;
         lastResult = SIMD.float32x4(lightness,
                                     lightness,
                                     lightness,
@@ -421,7 +472,8 @@
             get: function () {
                 lastResult = PREDEFINED[colorName];
                 return luma;
-            }
+            },
+            enumerable: true,
         });
     });
     luma.utils = utils;

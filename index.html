@@ -16,41 +16,83 @@
     </style>
 </head>
 <body>
-    <div></div>
-    <div></div>
-    <div></div>
-
-    <div></div>
-    <div></div>
-    <div></div>
-    <br>
-
-    <div></div>
-    <div></div>
-    <div></div>
-
-    <div></div>
-    <div></div>
-    <div></div>
 </body>
 <script src="luma.js"></script>
 <script src="simd.polyfill-61335b2.js"></script>
 <script src="luma.simd.js"></script>
 <script>
-var divs = document.querySelectorAll("div");
-var colors = luma.predefined;
-for (var i = 0; i < divs.length; i += 6) {
-    var colorName = colors[~~(Math.random() * (colors.length - 1))];
+var divs = [];
+var DIV_PER_ROW = 8;
+var DIV_PER_COL = 2;
 
-    divs[i].style.backgroundColor = luma(colorName).hex();
-    divs[i + 1].style.backgroundColor = luma(colorName).shiftHue(90).rgba();
-    divs[i + 2].style.backgroundColor = luma(colorName).shiftHue(180).rgba();
-    divs[i + 3].style.backgroundColor = luma(colorName).shiftHue(270).rgba();
-    divs[i + 4].style.backgroundColor = luma(colorName).shiftHue(360).rgba();
-    //divs[i + 3].style.backgroundColor = luma(colorName).saturate(0.3).rgba();
-    //divs[i + 4].style.backgroundColor = luma(colorName).desaturate(0.3).rgba();
-    //divs[i + 5].style.backgroundColor = luma(luma("rgba(57, 172, 153, 1)").hsla()).rgba();
+for (var i = 0; i < DIV_PER_COL; i++) {
+    var color = luma.random().result;
+    for (var j = 0; j < DIV_PER_ROW; j++) {
+        var div = document.createElement("div");
+        div.textContent = j * 90;
+        div.style.backgroundColor = luma(color).shiftHue(j * 90).rgba();
 
+        document.body.appendChild(div);
+    }
+    document.body.appendChild(document.createElement("br"));
 }
+
+
+var Vector2 = function (x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+var canvas = document.createElement("canvas");
+canvas.style.border = "1px solid black";
+document.body.appendChild(canvas);
+canvas.width = 2 * (canvas.height = 300);
+var context = canvas.getContext("2d");
+
+var drawHslCircle = function (luma, color, center, radius, steps, radiusSteps) {
+    var STEPS = steps;
+    var DEGREES_IN_CIRCUMFERENCE = 360;
+    var DEGREES_PER_STEP = DEGREES_IN_CIRCUMFERENCE / STEPS;
+    var DISTANCE_PER_RADIUS_STEP = radius / radiusSteps;
+    for (var i = 0; i < STEPS; i++) {
+        for (var j = 0; j < radiusSteps; j++) {
+            context.strokeStyle = luma(color)
+                                .shiftHue(i * DEGREES_PER_STEP)
+                                .desaturate(1 - j / radiusSteps)
+                                .rgba();
+
+            var angle = Math.PI * (i * DEGREES_PER_STEP) / 180;
+            var nextAngle = Math.PI * ((i + 1) * DEGREES_PER_STEP) / 180;
+            var distance = j * DISTANCE_PER_RADIUS_STEP,
+                nextDistance = (j + 1) * DISTANCE_PER_RADIUS_STEP;
+            var c1 = new Vector2(center.x + distance * Math.cos(angle),
+                                 center.y + distance * Math.sin(angle));
+
+            var c2 = new Vector2(center.x + distance * Math.cos(nextAngle),
+                                 center.y + distance * Math.sin(nextAngle));
+
+            var v = new Vector2(center.x + nextDistance * Math.cos(angle),
+                                center.y + nextDistance * Math.sin(angle));
+            var u = new Vector2(center.x + nextDistance * Math.cos(nextAngle),
+                                center.y + nextDistance * Math.sin(nextAngle));
+
+            context.beginPath();
+            context.moveTo(c1.x, c1.y);
+            context.lineTo(v.x, v.y);
+            context.lineTo(u.x, u.y);
+            context.lineTo(c2.x, c2.y);
+            context.closePath();
+            context.stroke();
+        }
+    }
+}
+
+var radius = canvas.width / 4;
+var center1 = new Vector2(radius, canvas.height / 2);
+var center2 = new Vector2(3 * radius, canvas.height / 2);
+var steps = 360 * 5;
+var radiusSteps = 100;
+luma.utils.drawHslCircle(context, "blue", center1, radius, steps, radiusSteps);
+lumasimd.utils.drawHslCircle(context, "lime", center2, radius, steps, radiusSteps);
 </script>
 </html>
