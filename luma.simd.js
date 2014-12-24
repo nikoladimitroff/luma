@@ -314,6 +314,7 @@
         return this;
     };
 
+
     var PREDEFINED = {
         black:                  ~~0x000000FF,
         silver:                 ~~0xC0C0C0FF,
